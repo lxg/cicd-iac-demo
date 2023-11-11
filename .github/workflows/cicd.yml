@@ -1,0 +1,54 @@
+name: build-and-deploy
+on: [push]
+env:
+  STACK_NAME: cicd-iac-demo
+  AWS_REGION: eu-central-1
+
+permissions:
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install NPM dependencies
+        run: npm ci --omit=dev --no-bin-links --no-audit
+
+      - name: Create Lambda ZIP file
+        run: zip -r lambda.zip index.js package.json node_modules
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume:  arn:aws:iam::${{ env.AWS_ACCOUNT }}:role/${{ env.AWS_ACCOUNT_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload Lambda package to S3
+        id: upload-lambda
+        run: |
+          LAMBDA_BUCKET="${{ env.AWS_ACCOUNT }}-${{ env.AWS_REGION }}-lambda-deployments"
+          VERSION="$(date -r lambda.zip +'%d%m%Y-%H%M%S')"
+          LAMBDA_FILE=${{ env.STACK_NAME }}-$VERSION.zip
+          aws s3 cp lambda.zip s3://$LAMBDA_BUCKET/$LAMBDA_FILE
+          echo "LAMBDA_BUCKET=$LAMBDA_BUCKET" >> $GITHUB_OUTPUT
+          echo "LAMBDA_FILE=$LAMBDA_FILE" >> $GITHUB_OUTPUT
+
+      - name: Deploy Cloudformation stack
+        env:
+          LAMBDA_BUCKET: ${{ steps.upload-lambda.outputs.LAMBDA_BUCKET }}
+          LAMBDA_FILE: ${{ steps.upload-lambda.outputs.LAMBDA_FILE }}
+        run: |
+          aws cloudformation deploy \
+            --stack-name=${{ env.STACK_NAME }} \
+            --template-file=cloudformation.yml \
+            --no-fail-on-empty-changeset \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              lambdaBucket=$LAMBDA_BUCKET \
+              lambdaFile=$LAMBDA_FILE
