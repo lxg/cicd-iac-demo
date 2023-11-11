@@ -26,13 +26,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume:  arn:aws:iam::${{ env.AWS_ACCOUNT }}:role/${{ env.AWS_ACCOUNT_ROLE }}
+          role-to-assume:  arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/${{ secrets.AWS_ACCOUNT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Upload Lambda package to S3
         id: upload-lambda
         run: |
-          LAMBDA_BUCKET="${{ env.AWS_ACCOUNT }}-${{ env.AWS_REGION }}-lambda-deployments"
+          LAMBDA_BUCKET="${{ secrets.AWS_ACCOUNT }}-${{ env.AWS_REGION }}-lambda-deployments"
           VERSION="$(date -r lambda.zip +'%d%m%Y-%H%M%S')"
           LAMBDA_FILE=${{ env.STACK_NAME }}-$VERSION.zip
           aws s3 cp lambda.zip s3://$LAMBDA_BUCKET/$LAMBDA_FILE
