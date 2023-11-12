@@ -1,5 +1,3 @@
-import fetch from "node-fetch"
-
 export const handler = async (event) => {
     if (!event.rawPath) {
         return { statusCode: 400, body: "Bad request" }
