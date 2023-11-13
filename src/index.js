@@ -11,7 +11,7 @@ export const handler = async (event) => {
 
     try {
         const path = event.rawPath.replace(new RegExp(`^${process.env.PATH_PREFIX || ""}/+|/+$`, "g"), '')
-        const name = path.split("/").pop() || "world"
+        const name = path.split("/").pop() || "universe"
 
 
         response.statusCode = 200
